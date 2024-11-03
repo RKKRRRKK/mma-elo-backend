@@ -1,5 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
+import os
+from supabase import create_client, Client
+
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def extract_event_info(row):
     event_info = {}
@@ -77,19 +83,14 @@ def scrape_events(url, month, day, year, name, headers):
 
     return event_found, event_links, latest_event
 
-def read_initial_variables(filename):
-    variables = {}
-    with open(filename, 'r') as file:
-        for line in file:
-            if ':' in line:
-                key, value = line.strip().split(':', 1)
-                variables[key.strip().lower()] = value.strip()
+def read_initial_variables():
+    response = supabase.table('initial_variables').select('*').execute()
+    variables = response.data[0]  # Assuming there's at least one row
     return variables
 
-def write_event_links(filename, links):
-    with open(filename, 'w') as file:
-        for link in links:
-            file.write(f"{link}\n")
+def write_event_links(links):
+    for link in links:
+        supabase.table('event_links').insert({'link': link}).execute()
 
 # read initial variables from txt
 initial_variables_file = 'initial_variables.txt'
@@ -97,10 +98,14 @@ variables = read_initial_variables(initial_variables_file)
 
 # write initial variables to txt
 
-def write_initial_variables(filename, variables):
-    with open(filename, 'w') as file:
-        for key, value in variables.items():
-            file.write(f"{key}: {value}\n")
+def write_initial_variables(latest_event):
+    supabase.table('initial_variables').update({
+        'month': latest_event['month'],
+        'day': latest_event['day'],
+        'year': latest_event['year'],
+        'name': latest_event['name'],
+        'date': f"{latest_event['year']}-{latest_event['month']}-{latest_event['day']}"
+    }).eq('id', 1).execute()
 
 # assign variables
 month = variables.get('month')

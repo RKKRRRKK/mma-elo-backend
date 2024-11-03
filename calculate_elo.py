@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import json
+import os
+from supabase import create_client, Client
 
 
 new_fights_df = pd.read_parquet('mma_fight_results.parquet')
@@ -17,14 +19,10 @@ choices = ['ko', 'sub']
 new_fights_df['dom'] = np.select(conditions, choices, default='dec')
 
  
-with open('final_table_with_id.json', 'r', encoding='utf-8') as f:
-    json_data = json.load(f)
+response = supabase.table('fighters_enriched').select('*').execute()
+final_df = pd.DataFrame(response.data)
 
-# dealing with retarded dneaver output, has to be adjusted
-final_data = json_data['select * from final_table_with_id']
-
-# conver to df
-final_df = pd.DataFrame(final_data)
+ 
 
 #eensure IDs are strings for consistent merging
 final_df['fighter_id'] = final_df['fighter_id'].astype(str)
@@ -154,9 +152,14 @@ df_dom = pd.DataFrame(results_dom)
 df_pico_elbows = pd.DataFrame(results_pico_elbows)
 
 # save raw tables
-df_normal.to_csv('new_raw_table_normal.csv', index=False)
-df_dom.to_csv('new_raw_table_dom.csv', index=False)
-df_pico_elbows.to_csv('new_raw_table_pico_elbows.csv', index=False)
+data_normal = df_normal.to_dict(orient='records')
+supabase.table('fighters_regular_raw').insert(data_normal).execute()
+
+data_dom = df_dom.to_dict(orient='records')
+supabase.table('fighters_dom_raw').insert(data_dom).execute()
+
+data_pico = df_pico_elbows.to_dict(orient='records')
+supabase.table('fighters_dom_jj_raw').insert(data_pico).execute()
 
 
 
@@ -225,8 +228,12 @@ final_df.drop(columns=[col for col in final_df.columns if col.endswith('_new')],
 
 
 
-final_df.to_json('updated_final_table.json', orient='records', indent=4)
+ 
+supabase.table('fighters_enriched').delete().execute()
+
+data_final = final_df.to_dict(orient='records')
+
+supabase.table('fighters_enriched').insert(data_final).execute()
 
 
-with open('new_fighters.json', 'w') as f:
-    json.dump(new_fighters, f)
+supabase.table('new_fighters').insert(new_fighters).execute()

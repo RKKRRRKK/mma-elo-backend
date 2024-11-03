@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 import pandas as pd
 from tqdm import tqdm
 import re
+import os
+from supabase import create_client, Client
 
 # initialize the lists for missing data
 yet_to_come = []
@@ -15,9 +17,9 @@ columns = [
 ]
 results_list = []
 
-# read links from txt
-with open("event_links.txt", "r") as file:
-    event_links = [line.strip() for line in file.readlines()]
+# read links from database
+response = supabase.table('event_links').select('link').execute()
+event_links = [item['link'] for item in response.data]
 
 # Function to extract fighter id from href  careful gpt written regex...
 def get_fighter_id(fighter_url):
@@ -228,14 +230,13 @@ for link in tqdm(event_links):
 
 
 results_df = pd.DataFrame(results_list, columns=columns)
-results_df.to_parquet("mma_fight_results.parquet", index=False)
 
-with open("yet_to_come.txt", "w") as file:
-    for link in yet_to_come:
-        file.write(f"{link}\n")
+data = results_df.to_dict(orient='records')
+supabase.table('mma_fight_results').insert(data).execute()
 
-with open("empty_page.txt", "w") as file:
-    for link in empty_page:
-        file.write(f"{link}\n")
+supabase.table('yet_to_come').insert([{'link': link} for link in yet_to_come]).execute()
 
+supabase.table('empty_page').insert([{'link': link} for link in empty_page]).execute()
+
+ 
 print("Run Finished")

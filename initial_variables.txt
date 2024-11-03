@@ -1,4 +1,0 @@
-month: Nov
-day: 03
-year: 2024
-name: EFC 6
