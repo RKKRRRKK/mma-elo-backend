@@ -90,8 +90,21 @@ def read_initial_variables():
     return variables
 
 def write_event_links(links):
-    for link in links:
-        supabase.table('event_links').insert({'link': link}).execute()
+    try:
+        supabase.table('event_links').delete().execute()
+        print("Cleared existing records in 'event_links' table.")
+    except Exception as e:
+        print(f"Error deleting existing records: {e}")
+        exit(1)
+    
+    data = [{'link': link} for link in links]
+    
+    try:
+        supabase.table('event_links').insert(data).execute()
+        print(f"Inserted {len(data)} new links into 'event_links' table.")
+    except Exception as e:
+        print(f"Error inserting new links: {e}")
+        exit(1)
 
 def write_initial_variables(latest_event):
     supabase.table('initial_variables').update({
