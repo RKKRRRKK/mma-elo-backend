@@ -98,8 +98,7 @@ def write_initial_variables(latest_event):
         'month': latest_event['month'],
         'day': latest_event['day'],
         'year': latest_event['year'],
-        'name': latest_event['name'],
-        'date': f"{latest_event['year']}-{latest_event['month']}-{latest_event['day']}"
+        'name': latest_event['name']
     }).eq('id', 1).execute()
 
 #read initial variables from Supabase
