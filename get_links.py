@@ -95,6 +95,13 @@ def write_event_links(filename, links):
 initial_variables_file = 'initial_variables.txt'
 variables = read_initial_variables(initial_variables_file)
 
+# write initial variables to txt
+
+def write_initial_variables(filename, variables):
+    with open(filename, 'w') as file:
+        for key, value in variables.items():
+            file.write(f"{key}: {value}\n")
+
 # assign variables
 month = variables.get('month')
 day = variables.get('day')
@@ -164,5 +171,13 @@ if latest_event:
     print(f"day: {latest_event['day']}")
     print(f"year: {latest_event['year']}")
     print(f"name: {latest_event['name']}")
+   
+    variables['month'] = latest_event['month']
+    variables['day'] = latest_event['day']
+    variables['year'] = latest_event['year']
+    variables['name'] = latest_event['name']
+
+    # update initial variales
+    write_initial_variables(initial_variables_file, variables)
 else:
     print("No latest event found")
