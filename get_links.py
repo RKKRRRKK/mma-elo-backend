@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import os
 from supabase import create_client, Client
 
+
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -92,12 +93,6 @@ def write_event_links(links):
     for link in links:
         supabase.table('event_links').insert({'link': link}).execute()
 
-# read initial variables from txt
-initial_variables_file = 'initial_variables.txt'
-variables = read_initial_variables(initial_variables_file)
-
-# write initial variables to txt
-
 def write_initial_variables(latest_event):
     supabase.table('initial_variables').update({
         'month': latest_event['month'],
@@ -107,7 +102,10 @@ def write_initial_variables(latest_event):
         'date': f"{latest_event['year']}-{latest_event['month']}-{latest_event['day']}"
     }).eq('id', 1).execute()
 
-# assign variables
+#read initial variables from Supabase
+variables = read_initial_variables()
+
+
 month = variables.get('month')
 day = variables.get('day')
 year = variables.get('year')
@@ -115,7 +113,7 @@ name = variables.get('name')
 
 if not all([month, day, year, name]):
     print("Error: One or more initial variables are missing.")
-    print(f"Please ensure {initial_variables_file} contains month, day, year, and name.")
+    print(f"Please ensure the 'initial_variables' table contains month, day, year, and name.")
     exit(1)
 
 # user agent header
@@ -163,10 +161,9 @@ if event_links:
     for link in event_links:
         print(link)
 
-    # write event links to a plain text file
-    output_file = 'event_links.txt'
-    write_event_links(output_file, event_links)
-    print(f"\nEvent links have been written to {output_file}")
+    # write event links to Supabase
+    write_event_links(event_links)
+    print(f"\nEvent links have been written to Supabase 'event_links' table.")
 else:
     print("No new events found")
 
@@ -176,13 +173,8 @@ if latest_event:
     print(f"day: {latest_event['day']}")
     print(f"year: {latest_event['year']}")
     print(f"name: {latest_event['name']}")
-   
-    variables['month'] = latest_event['month']
-    variables['day'] = latest_event['day']
-    variables['year'] = latest_event['year']
-    variables['name'] = latest_event['name']
 
-    # update initial variales
-    write_initial_variables(initial_variables_file, variables)
+    # Update initial variables in Supabase
+    write_initial_variables(latest_event)
 else:
     print("No latest event found")
