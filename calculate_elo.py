@@ -155,14 +155,15 @@ df_dom['event_date'] = df_dom['event_date'].astype(str)
 df_pico_elbows['event_date'] = df_pico_elbows['event_date'].astype(str)
 
 
-# save raw tables
-data_normal = df_normal.to_dict(orient='records')
+#get rid of id columns let it e handled by supabase
+
+data_normal = df_normal.drop(columns=['id'], errors='ignore').to_dict(orient='records')
+data_dom = df_dom.drop(columns=['id'], errors='ignore').to_dict(orient='records')
+data_pico = df_pico_elbows.drop(columns=['id'], errors='ignore').to_dict(orient='records')
+
+
 supabase.table('fighters_regular_raw').insert(data_normal).execute()
-
-data_dom = df_dom.to_dict(orient='records')
 supabase.table('fighters_dom_raw').insert(data_dom).execute()
-
-data_pico = df_pico_elbows.to_dict(orient='records')
 supabase.table('fighters_dom_jj_raw').insert(data_pico).execute()
 
 
