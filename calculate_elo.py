@@ -259,10 +259,16 @@ final_df.drop(columns=[col for col in final_df.columns if col.endswith('_new')],
 
 data_final = final_df.to_dict(orient='records')
 
-if any(pd.isna(value) for record in data_final for value in record.values()):
-    print("NaN detected, terminating script")
-    sys.exit(1)  
+nan_columns = []
+for col in final_df.columns:
+    if final_df[col].isna().any():
+        nan_columns.append(col)
 
+# If NaN values exist, log the columns and terminate the script
+if nan_columns:
+    print(f"NaN detected in columns: {nan_columns}")
+    sys.exit(1)
+ 
 
 supabase.table('fighters_enriched').delete().neq('name', 'None').execute()
 supabase.table('fighters_enriched').insert(data_final).execute()
