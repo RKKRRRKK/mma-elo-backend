@@ -282,6 +282,18 @@ for idx, row in final_df.head(10).iterrows():
 #     print(f"NaN detected in columns: {nan_columns}")
 #     sys.exit(1)
  
+duplicates = final_df[final_df['fighter_id'].duplicated(keep=False)]
+
+if not duplicates.empty:
+    print("Duplicate fighter_ids detected in final_df:")
+    print(duplicates[['fighter_id', 'name']])
+    sys.exit(1)
+else:
+    print("No duplicates found in final_df.")
+
+
+
+
 
 supabase.table('fighters_enriched').delete().neq('name', 'None').execute()
 supabase.table('fighters_enriched').insert(data_final).execute()
