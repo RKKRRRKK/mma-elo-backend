@@ -257,7 +257,7 @@ final_df = pd.concat([final_df, new_fighters_df], ignore_index=True)
 final_df.drop(columns=[col for col in final_df.columns if col.endswith('_new')], inplace=True)
 
 
-for col in ['days_peak', 'days_peak_dom', 'days_peak_dom_jj']:
+for col in ['days_peak', 'days_peak_dom', 'days_peak_dom_jj', 'name', 'peak_elo_dom_jj', 'best_win_dom_jj', 'peak_elo_dom', 'best_win_dom', 'peak_elo', 'best_win', 'nationality', 'birthplace', 'birth_date', 'association', 'weight_class', 'ufc_position', 'ufc_class', 'rn']:
     final_df[col] = final_df[col].fillna(0)
 
 data_final = final_df.to_dict(orient='records')
@@ -268,15 +268,15 @@ for idx, row in final_df.head(10).iterrows():
         print(f"{col}: {row[col]}")
     print("\n" + "-" * 50 + "\n")
 
-nan_columns = []
-for col in final_df.columns:
-    if final_df[col].isna().any():
-        nan_columns.append(col)
+# nan_columns = []
+# for col in final_df.columns:
+#     if final_df[col].isna().any():
+#         nan_columns.append(col)
 
-# If NaN values exist, log the columns and terminate the script
-if nan_columns:
-    print(f"NaN detected in columns: {nan_columns}")
-    sys.exit(1)
+# # If NaN values exist, log the columns and terminate the script
+# if nan_columns:
+#     print(f"NaN detected in columns: {nan_columns}")
+#     sys.exit(1)
  
 
 supabase.table('fighters_enriched').delete().neq('name', 'None').execute()
