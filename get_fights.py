@@ -241,7 +241,7 @@ supabase.table('mma_fight_results').insert(data).execute()
 
 supabase.table('yet_to_come').insert([{'link': link} for link in yet_to_come]).execute()
 
-supabase.table('empty_page').insert([{'link': link} for link in empty_page]).execute()
+supabase.table('empty_event_pages').insert([{'link': link} for link in empty_page]).execute()
 
  
 print("Run Finished")
