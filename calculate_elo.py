@@ -311,10 +311,12 @@ if not duplicates.empty:
 
         print(f"\nDuplicate group {idx + 1} for fighter_id '{fighter_id}':")
         print(group.to_string(index=False))
-        sys.exit(1)
+        
 else:
     print("No duplicates found in final_df.")
 
+if not duplicates.empty:
+    sys.exit(1)
 
 
 
