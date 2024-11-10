@@ -10,8 +10,6 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 #scraped in previous script
 response = supabase.table('mma_fight_results').select('*').execute()
-if response.error:
-    raise ValueError(f"Error fetching data: {response.error}")
 new_fights_df = pd.DataFrame(response.data)
 
 #conditions for 'dom'
@@ -28,8 +26,6 @@ new_fights_df['dom'] = np.select(conditions, choices, default='dec')
 
 #previously finished table to update
 response = supabase.table('fighters_enriched').select('*').execute()
-if response.error:
-    raise ValueError(f"Error fetching data: {response.error}")
 final_df = pd.DataFrame(response.data)
 
 #eensure IDs are strings for consistent merging
