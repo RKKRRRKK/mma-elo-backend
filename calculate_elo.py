@@ -234,6 +234,9 @@ for new_fighter in new_fighters:
         'peak_elo_dom': current_elos_dom[fighter_id],
         'current_elo_dom_jj': current_elos_dom_jj[fighter_id],
         'peak_elo_dom_jj': current_elos_dom_jj[fighter_id],
+        'days_peak': 0,
+        'days_peak_dom': 0,
+        'days_peak_dom_jj': 0,
         'nationality': 'unknown',
         'birthplace': 'unknown',
         'birth_date': 'unknown',
@@ -254,8 +257,8 @@ final_df = pd.concat([final_df, new_fighters_df], ignore_index=True)
 final_df.drop(columns=[col for col in final_df.columns if col.endswith('_new')], inplace=True)
 
 
-
- 
+for col in ['days_peak', 'days_peak_dom', 'days_peak_dom_jj']:
+    final_df[col] = final_df[col].fillna(0)
 
 data_final = final_df.to_dict(orient='records')
 
