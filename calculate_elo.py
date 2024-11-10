@@ -1,15 +1,19 @@
 import pandas as pd
 import numpy as np
-import json
 import os
 from supabase import create_client, Client
+
 
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+#scraped in previous script
+response = supabase.table('mma_fight_results').select('*').execute()
+if response.error:
+    raise ValueError(f"Error fetching data: {response.error}")
+new_fights_df = pd.DataFrame(response.data)
 
-new_fights_df = pd.read_parquet('mma_fight_results.parquet')
 #conditions for 'dom'
 conditions = [
     new_fights_df['winby'].str.contains('TKO|KO', case=False, regex=True, na=False),
@@ -22,18 +26,16 @@ choices = ['ko', 'sub']
 # apply conditions, create new column 'dom'
 new_fights_df['dom'] = np.select(conditions, choices, default='dec')
 
- 
+#previously finished table to update
 response = supabase.table('fighters_enriched').select('*').execute()
+if response.error:
+    raise ValueError(f"Error fetching data: {response.error}")
 final_df = pd.DataFrame(response.data)
-
- 
 
 #eensure IDs are strings for consistent merging
 final_df['fighter_id'] = final_df['fighter_id'].astype(str)
 new_fights_df['winner_id'] = new_fights_df['winner_id'].astype(str)
 new_fights_df['loser_id'] = new_fights_df['loser_id'].astype(str)
-
-
 
 #Initialize elos
 current_elos_normal = {}
@@ -62,10 +64,7 @@ for fighter_id, fighter_name in zip(
         current_elos_pico_elbows[fighter_id] = 1200.0
         new_fighters.append({'fighter_id': fighter_id, 'name': fighter_name})
 
-
-
-
-#define elo calculation functions
+# define elo calculation functions
 def expected_score(elo_a, elo_b):
     return 1 / (1 + 10 ** ((elo_b - elo_a) / 400))
 
@@ -168,11 +167,6 @@ supabase.table('fighters_dom_jj_raw').insert(data_pico).execute()
 
 
 
-
-
-
-
-
 # create dfs of new elos
 elo_updates = pd.DataFrame({
     'fighter_id': list(elo_ratings_normal.keys()),
@@ -233,7 +227,7 @@ final_df.drop(columns=[col for col in final_df.columns if col.endswith('_new')],
 
 
  
-supabase.table('fighters_enriched').delete().execute()
+supabase.table('fighters_enriched').delete().neq('name', None).execute()
 
 data_final = final_df.to_dict(orient='records')
 

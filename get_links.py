@@ -90,7 +90,7 @@ def read_initial_variables():
     return variables
 
 def write_event_links(links):
-    supabase.table('event_links').delete().execute()
+    supabase.table('event_links').delete().neq('id', None).execute()
     data = [{'link': link} for link in links]
     supabase.table('event_links').insert(data).execute()
 
