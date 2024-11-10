@@ -179,7 +179,6 @@ elo_updates = pd.DataFrame({
 
 # merge with final_df
 final_df = final_df.merge(elo_updates, on='fighter_id', how='outer', suffixes=('', '_new'))
-final_df['event_date'] = final_df['event_date'].astype(str)
 
 # update current and peak elos
 for idx, row in final_df.iterrows():
