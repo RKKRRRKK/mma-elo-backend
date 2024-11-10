@@ -259,7 +259,11 @@ final_df.drop(columns=[col for col in final_df.columns if col.endswith('_new')],
 
 data_final = final_df.to_dict(orient='records')
 
-print(final_df.head(10))
+for idx, row in final_df.head(10).iterrows():
+    print(f"Row {idx + 1}")
+    for col in final_df.columns:
+        print(f"{col}: {row[col]}")
+    print("\n" + "-" * 50 + "\n")
 
 nan_columns = []
 for col in final_df.columns:
