@@ -308,7 +308,7 @@ duplicate_mask = final_df['fighter_id'].duplicated(keep=False)
 duplicates = final_df[duplicate_mask]
 
 if not duplicates.empty:
-    print("Duplicate fighter_ids detected in final_df:")
+    print(duplicates.length, "Duplicate fighter_ids detected in final_df:")
     
  
     grouped_duplicates = duplicates.groupby('fighter_id')
