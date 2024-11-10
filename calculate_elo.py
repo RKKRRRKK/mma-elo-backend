@@ -260,6 +260,10 @@ final_df.drop(columns=[col for col in final_df.columns if col.endswith('_new')],
 for col in ['days_peak', 'days_peak_dom', 'days_peak_dom_jj', 'name', 'peak_elo_dom_jj', 'best_win_dom_jj', 'peak_elo_dom', 'best_win_dom', 'peak_elo', 'best_win', 'nationality', 'birthplace', 'birth_date', 'association', 'weight_class', 'ufc_position', 'ufc_class', 'rn']:
     final_df[col] = final_df[col].fillna(0)
 
+
+
+final_df['rn'] = final_df['rn'].fillna(0).astype(int)
+
 data_final = final_df.to_dict(orient='records')
 
 for idx, row in final_df.head(10).iterrows():
