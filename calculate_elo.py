@@ -26,7 +26,30 @@ choices = ['ko', 'sub']
 new_fights_df['dom'] = np.select(conditions, choices, default='dec')
 
 #previously finished table to update
-response = supabase.table('fighters_enriched').select('*').execute()
+response = supabase.table('fighters_enriched').select('''
+    name,
+    COALESCE(peak_elo, peak_elo_dom, peak_elo_dom_jj)::float AS peak_elo,
+    COALESCE(peak_elo_dom, peak_elo, peak_elo_dom_jj)::float AS peak_elo_dom,
+    COALESCE(peak_elo_dom_jj, peak_elo, peak_elo_dom)::float AS peak_elo_dom_jj,
+    COALESCE(current_elo, current_elo_dom, current_elo_dom_jj)::float AS current_elo,
+    COALESCE(current_elo_dom, current_elo, current_elo_dom_jj)::float AS current_elo_dom,
+    COALESCE(current_elo_dom_jj, current_elo, current_elo_dom)::float AS current_elo_dom_jj,
+    days_peak_dom_jj,
+    best_win_dom_jj,
+    days_peak_dom,
+    best_win_dom,
+    days_peak,
+    best_win,
+    nationality,
+    birthplace,
+    birth_date,
+    association,
+    weight_class,
+    ufc_position,
+    ufc_class,
+    fighter_id
+''').execute()
+
 final_df = pd.DataFrame(response.data)
 
 #eensure IDs are strings for consistent merging
@@ -232,11 +255,7 @@ final_df.drop(columns=[col for col in final_df.columns if col.endswith('_new')],
 
  
 
-
-final_df = final_df.where(pd.notnull(final_df), None)
 data_final = final_df.to_dict(orient='records')
-
-cleaned_data_final = [{k: (None if pd.isna(v) else v) for k, v in record.items()} for record in data_final]
 
 if any(pd.isna(value) for record in data_final for value in record.values()):
     print("NaN detected, terminating script")
@@ -244,7 +263,7 @@ if any(pd.isna(value) for record in data_final for value in record.values()):
 
 
 supabase.table('fighters_enriched').delete().neq('name', 'None').execute()
-supabase.table('fighters_enriched').insert(cleaned_data_final).execute()
+supabase.table('fighters_enriched').insert(data_final).execute()
 
 
 supabase.table('new_fighters').insert(new_fighters).execute()
