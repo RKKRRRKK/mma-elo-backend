@@ -235,7 +235,7 @@ for link in tqdm(event_links):
 
 results_df = pd.DataFrame(results_list, columns=columns)
 
-supabase.table('mma_fight_results').delete().neq('id', None).execute()
+supabase.table('mma_fight_results').delete().neq('id', 0).execute()
 data = results_df.to_dict(orient='records')
 supabase.table('mma_fight_results').insert(data).execute()
 
