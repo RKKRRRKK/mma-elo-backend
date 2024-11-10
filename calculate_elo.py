@@ -64,6 +64,9 @@ current_elos_normal = {}
 current_elos_dom = {}
 current_elos_dom_jj = {}
 
+
+
+
 #list to collect new fighters
 new_fighters = []
 
@@ -98,6 +101,10 @@ for fighter_id, fighter_name in zip(
         current_elos_dom[fighter_id] = 1200.0
         current_elos_dom_jj[fighter_id] = 1200.0
         new_fighters.append({'fighter_id': fighter_id, 'name': fighter_name})
+
+print(f"Number of fighters in final_df: {final_df['fighter_id'].nunique()}")
+print(f"Number of fighters in current_elos_normal: {len(current_elos_normal)}")
+
 
 # define elo calculation functions
 def expected_score(elo_a, elo_b):
