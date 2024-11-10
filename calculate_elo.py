@@ -67,6 +67,19 @@ current_elos_dom_jj = {}
 #list to collect new fighters
 new_fighters = []
 
+#MATCHING ERROR CHECKING LOGS
+
+print("\nSample fighter_ids from final_df:")
+print(final_df['fighter_id'].head(5).tolist())
+
+print("\nSample winner_ids from new_fights_df:")
+print(new_fights_df['winner_id'].head(5).tolist())
+
+print("\nSample loser_ids from new_fights_df:")
+print(new_fights_df['loser_id'].head(5).tolist())
+
+#MATCHING ERROR CHECKING LOGS
+
 # map existing fighters to their current elos
 elo_columns = ['current_elo', 'current_elo_dom', 'current_elo_dom_jj']
 for _, row in final_df.iterrows():
@@ -266,11 +279,11 @@ final_df['rn'] = final_df['rn'].fillna(1).astype(int)
 
 data_final = final_df.to_dict(orient='records')
 
-for idx, row in final_df.head(10).iterrows():
-    print(f"Row {idx + 1}")
-    for col in final_df.columns:
-        print(f"{col}: {row[col]}")
-    print("\n" + "-" * 50 + "\n")
+# for idx, row in final_df.head(10).iterrows():
+#     print(f"Row {idx + 1}")
+#     for col in final_df.columns:
+#         print(f"{col}: {row[col]}")
+#     print("\n" + "-" * 50 + "\n")
 
 # nan_columns = []
 # for col in final_df.columns:
@@ -282,12 +295,23 @@ for idx, row in final_df.head(10).iterrows():
 #     print(f"NaN detected in columns: {nan_columns}")
 #     sys.exit(1)
  
-duplicates = final_df[final_df['fighter_id'].duplicated(keep=False)]
+ 
+duplicate_mask = final_df['fighter_id'].duplicated(keep=False)
+duplicates = final_df[duplicate_mask]
 
 if not duplicates.empty:
     print("Duplicate fighter_ids detected in final_df:")
-    print(duplicates[['fighter_id', 'name']])
-    sys.exit(1)
+    
+ 
+    grouped_duplicates = duplicates.groupby('fighter_id')
+    
+    for idx, (fighter_id, group) in enumerate(grouped_duplicates):
+        if idx >= 5:
+            break
+
+        print(f"\nDuplicate group {idx + 1} for fighter_id '{fighter_id}':")
+        print(group.to_string(index=False))
+        sys.exit(1)
 else:
     print("No duplicates found in final_df.")
 
