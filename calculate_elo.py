@@ -259,7 +259,7 @@ final_df.drop(columns=[col for col in final_df.columns if col.endswith('_new')],
 
 data_final = final_df.to_dict(orient='records')
 
-print(final_df.head(10).to_string())
+print(final_df.head(10))
 
 nan_columns = []
 for col in final_df.columns:
