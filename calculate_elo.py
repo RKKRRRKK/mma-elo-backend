@@ -53,6 +53,7 @@ response = supabase.table('fighters_enriched').select('''
 ''').execute()
 
 final_df = pd.DataFrame(response.data)
+print(f"Number of fighters in final_df added right after final_df is created from response: {final_df['fighter_id'].nunique()}")
 
 #eensure IDs are strings for consistent merging
 final_df['fighter_id'] = final_df['fighter_id'].astype(str)
@@ -102,7 +103,7 @@ for fighter_id, fighter_name in zip(
         current_elos_dom_jj[fighter_id] = 1200.0
         new_fighters.append({'fighter_id': fighter_id, 'name': fighter_name})
 
-print(f"Number of fighters in final_df: {final_df['fighter_id'].nunique()}")
+print(f"Number of fighters in final_df added later: {final_df['fighter_id'].nunique()}")
 print(f"Number of fighters in current_elos_normal: {len(current_elos_normal)}")
 
 
