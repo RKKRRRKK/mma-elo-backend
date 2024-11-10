@@ -189,11 +189,12 @@ for idx, row in final_df.iterrows():
 
         if not np.isnan(curr_elo_new):
             final_df.at[idx, curr_elo_col] = curr_elo_new
-            # ! peak elo !
-            peak_elo = row.get(peak_elo_col, 0)
+            # convert peak_elo to float
+            peak_elo = float(row[peak_elo_col])
             if curr_elo_new > peak_elo:
                 final_df.at[idx, peak_elo_col] = curr_elo_new
-                final_df.at[idx, f'days_peak_{variation}' if variation != 'normal' else 'days_peak'] = 0 #placeholder value
+                final_df.at[idx, f'days_peak_{variation}' if variation != 'normal' else 'days_peak'] = 0  # placeholder value
+
 # handle new fighters
 new_rows = []
 for new_fighter in new_fighters:
