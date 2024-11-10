@@ -50,7 +50,7 @@ response = supabase.table('fighters_enriched').select('''
     COALESCE(ufc_position, 'none') AS ufc_position,
     COALESCE(ufc_class, 'none') AS ufc_class,
     fighter_id
-''').execute()
+''').limit(1000000).execute()
 
 final_df = pd.DataFrame(response.data)
 print(f"Number of fighters in final_df added right after final_df is created from response: {final_df['fighter_id'].nunique()}")
