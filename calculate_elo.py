@@ -150,6 +150,11 @@ df_normal = pd.DataFrame(results_normal)
 df_dom = pd.DataFrame(results_dom)
 df_pico_elbows = pd.DataFrame(results_pico_elbows)
 
+df_normal['event_date'] = df_normal['event_date'].astype(str)
+df_dom['event_date'] = df_dom['event_date'].astype(str)
+df_pico_elbows['event_date'] = df_pico_elbows['event_date'].astype(str)
+
+
 # save raw tables
 data_normal = df_normal.to_dict(orient='records')
 supabase.table('fighters_regular_raw').insert(data_normal).execute()
@@ -173,6 +178,7 @@ elo_updates = pd.DataFrame({
 
 # merge with final_df
 final_df = final_df.merge(elo_updates, on='fighter_id', how='outer', suffixes=('', '_new'))
+final_df['event_date'] = final_df['event_date'].astype(str)
 
 # update current and peak elos
 for idx, row in final_df.iterrows():
