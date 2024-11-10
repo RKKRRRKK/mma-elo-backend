@@ -230,12 +230,20 @@ final_df.drop(columns=[col for col in final_df.columns if col.endswith('_new')],
 
 
  
-supabase.table('fighters_enriched').delete().neq('name', 'None').execute()
+
 
 final_df = final_df.where(pd.notnull(final_df), None)
 data_final = final_df.to_dict(orient='records')
 
-supabase.table('fighters_enriched').insert(data_final).execute()
+cleaned_data_final = [{k: (None if pd.isna(v) else v) for k, v in record.items()} for record in data_final]
+
+if any(pd.isna(value) for record in data_final for value in record.values()):
+    print("NaN detected, terminating script")
+    sys.exit(1)  
+
+
+supabase.table('fighters_enriched').delete().neq('name', 'None').execute()
+supabase.table('fighters_enriched').insert(cleaned_data_final).execute()
 
 
 supabase.table('new_fighters').insert(new_fighters).execute()
