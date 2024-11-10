@@ -190,7 +190,7 @@ for idx, row in final_df.iterrows():
         if not np.isnan(curr_elo_new):
             final_df.at[idx, curr_elo_col] = curr_elo_new
             # convert peak_elo to float
-            peak_elo = float(row[peak_elo_col])
+            peak_elo = float(row[peak_elo_col]) if row[peak_elo_col] else 0.0  
             if curr_elo_new > peak_elo:
                 final_df.at[idx, peak_elo_col] = curr_elo_new
                 final_df.at[idx, f'days_peak_{variation}' if variation != 'normal' else 'days_peak'] = 0  # placeholder value
