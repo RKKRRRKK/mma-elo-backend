@@ -36,18 +36,18 @@ new_fights_df['loser_id'] = new_fights_df['loser_id'].astype(str)
 #Initialize elos
 current_elos_normal = {}
 current_elos_dom = {}
-current_elos_pico_elbows = {}
+current_elos_dom_jj = {}
 
 #list to collect new fighters
 new_fighters = []
 
 # map existing fighters to their current elos
-elo_columns = ['current_elo', 'current_elo_dom', 'current_elo_pico_elbows']
+elo_columns = ['current_elo', 'current_elo_dom', 'current_elo_dom_jj']
 for _, row in final_df.iterrows():
     fighter_id = row['fighter_id']
     current_elos_normal[fighter_id] = row['current_elo']
     current_elos_dom[fighter_id] = row['current_elo_dom']
-    current_elos_pico_elbows[fighter_id] = row['current_elo_pico_elbows']
+    current_elos_dom_jj[fighter_id] = row['current_elo_dom_jj']
 
 # identifying new fighters and assigning elo, concatenation creates a series with both the winner and loser id (fighter_id) and names (figher_name) to be iterated through.  
 for fighter_id, fighter_name in zip(
@@ -57,7 +57,7 @@ for fighter_id, fighter_name in zip(
     if fighter_id not in current_elos_normal:
         current_elos_normal[fighter_id] = 1200.0
         current_elos_dom[fighter_id] = 1200.0
-        current_elos_pico_elbows[fighter_id] = 1200.0
+        current_elos_dom_jj[fighter_id] = 1200.0
         new_fighters.append({'fighter_id': fighter_id, 'name': fighter_name})
 
 # define elo calculation functions
@@ -65,7 +65,7 @@ def expected_score(elo_a, elo_b):
     return 1 / (1 + 10 ** ((elo_b - elo_a) / 400))
 
 def update_elo(winner_elo, loser_elo, k_factor, is_ko_or_sub, is_round_one, variation):
-    if variation in ['dom', 'dom_untested']:
+    if variation in ['dom', 'dom_jj']:
         if is_ko_or_sub:
             k_factor *= 2 if is_round_one else 1.5
     expected_win = expected_score(winner_elo, loser_elo)
@@ -76,12 +76,12 @@ def update_elo(winner_elo, loser_elo, k_factor, is_ko_or_sub, is_round_one, vari
 # initialize elo ratings for calculations
 elo_ratings_normal = current_elos_normal.copy()
 elo_ratings_dom = current_elos_dom.copy()
-elo_ratings_pico_elbows = current_elos_pico_elbows.copy()
+elo_ratings_dom_jj = current_elos_dom_jj.copy()
 
 # initialize  lists to store fight results
 results_normal = []
 results_dom = []
-results_pico_elbows = []
+results_dom_jj = []
 
 # sort fights by date
 new_fights_df['event_date'] = pd.to_datetime(new_fights_df['event_date'])
@@ -105,15 +105,15 @@ for _, fight in new_fights_df.iterrows():
     is_ko_or_sub = fight['dom'] in ['ko', 'sub']
     is_round_one = str(fight['round']) == '1'
 
-    for variation in ['normal', 'dom', 'dom_untested']:
+    for variation in ['normal', 'dom', 'dom_jj']:
         k_factor = 60
         winner_elo_before = elo_ratings_normal[fight['winner_id']] if variation == 'normal' else \
                             elo_ratings_dom[fight['winner_id']] if variation == 'dom' else \
-                            elo_ratings_pico_elbows[fight['winner_id']]
+                            elo_ratings_dom_jj[fight['winner_id']]
 
         loser_elo_before = elo_ratings_normal[fight['loser_id']] if variation == 'normal' else \
                            elo_ratings_dom[fight['loser_id']] if variation == 'dom' else \
-                           elo_ratings_pico_elbows[fight['loser_id']]
+                           elo_ratings_dom_jj[fight['loser_id']]
 
         winner_elo_after, loser_elo_after = update_elo(
             winner_elo_before, loser_elo_before, k_factor, is_ko_or_sub, is_round_one, variation
@@ -137,9 +137,9 @@ for _, fight in new_fights_df.iterrows():
                                 'loser_elo_before': loser_elo_before,
                                 'loser_elo_after': loser_elo_after})
         else:
-            elo_ratings_pico_elbows[fight['winner_id']] = winner_elo_after
-            elo_ratings_pico_elbows[fight['loser_id']] = loser_elo_after
-            results_pico_elbows.append({**fight_data,
+            elo_ratings_dom_jj[fight['winner_id']] = winner_elo_after
+            elo_ratings_dom_jj[fight['loser_id']] = loser_elo_after
+            results_dom_jj.append({**fight_data,
                                         'winner_elo_before': winner_elo_before,
                                         'winner_elo_after': winner_elo_after,
                                         'loser_elo_before': loser_elo_before,
@@ -148,18 +148,18 @@ for _, fight in new_fights_df.iterrows():
 
 df_normal = pd.DataFrame(results_normal)
 df_dom = pd.DataFrame(results_dom)
-df_pico_elbows = pd.DataFrame(results_pico_elbows)
+df_dom_jj = pd.DataFrame(results_dom_jj)
 
 df_normal['event_date'] = df_normal['event_date'].astype(str)
 df_dom['event_date'] = df_dom['event_date'].astype(str)
-df_pico_elbows['event_date'] = df_pico_elbows['event_date'].astype(str)
+df_dom_jj['event_date'] = df_dom_jj['event_date'].astype(str)
 
 
 #get rid of id columns let it e handled by supabase
 
 data_normal = df_normal.drop(columns=['id'], errors='ignore').to_dict(orient='records')
 data_dom = df_dom.drop(columns=['id'], errors='ignore').to_dict(orient='records')
-data_pico = df_pico_elbows.drop(columns=['id'], errors='ignore').to_dict(orient='records')
+data_pico = df_dom_jj.drop(columns=['id'], errors='ignore').to_dict(orient='records')
 
 
 supabase.table('fighters_regular_raw').insert(data_normal).execute()
@@ -174,7 +174,7 @@ elo_updates = pd.DataFrame({
     'fighter_id': list(elo_ratings_normal.keys()),
     'current_elo': list(elo_ratings_normal.values()),
     'current_elo_dom': list(elo_ratings_dom.values()),
-    'current_elo_pico_elbows': list(elo_ratings_pico_elbows.values())
+    'current_elo_dom_jj': list(elo_ratings_dom_jj.values())
 })
 
 # merge with final_df
@@ -182,7 +182,7 @@ final_df = final_df.merge(elo_updates, on='fighter_id', how='outer', suffixes=('
 
 # update current and peak elos
 for idx, row in final_df.iterrows():
-    for variation in ['normal', 'dom', 'pico_elbows']:
+    for variation in ['normal', 'dom', 'dom_jj']:
         curr_elo_col = f'current_elo_{variation}' if variation != 'normal' else 'current_elo'
         peak_elo_col = f'peak_elo_{variation}' if variation != 'normal' else 'peak_elo'
         curr_elo_new = row.get(f'{curr_elo_col}_new', np.nan)
@@ -206,8 +206,8 @@ for new_fighter in new_fighters:
         'peak_elo': current_elos_normal[fighter_id],
         'current_elo_dom': current_elos_dom[fighter_id],
         'peak_elo_dom': current_elos_dom[fighter_id],
-        'current_elo_pico_elbows': current_elos_pico_elbows[fighter_id],
-        'peak_elo_pico_elbows': current_elos_pico_elbows[fighter_id],
+        'current_elo_dom_jj': current_elos_dom_jj[fighter_id],
+        'peak_elo_dom_jj': current_elos_dom_jj[fighter_id],
         'nationality': 'unknown',
         'birthplace': 'unknown',
         'birth_date': 'unknown',
