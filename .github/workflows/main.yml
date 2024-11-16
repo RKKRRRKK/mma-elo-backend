@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      RUN_ONLY_CALCULATE_ELO: true  # Set to true to run only calculate_elo.py
+      RUN_ONLY_CALCULATE_ELO: false  # Set to true to run only calculate_elo.py
 
     steps:
       - name: Checkout Repo
