@@ -7,7 +7,7 @@ import time
 
 #define batch function
 
-def batch_insert(supabase_table, data, batch_size=1000):
+def batch_insert(supabase_table, data, batch_size=10000):
     total_records = len(data)
     print(f"Starting batch insert into '{supabase_table}' with {total_records} records.")
     for i in range(0, total_records, batch_size):
