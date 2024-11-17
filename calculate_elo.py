@@ -44,7 +44,7 @@ response = supabase.table('fighters_enriched').select('''
     COALESCE(current_elo, current_elo_dom, current_elo_dom_jj, 0) AS current_elo,
     COALESCE(current_elo_dom, current_elo, current_elo_dom_jj, 0) AS current_elo_dom,
     COALESCE(current_elo_dom_jj, current_elo, current_elo_dom, 0) AS current_elo_dom_jj,
-    
+
     COALESCE(days_peak_dom_jj, 0) AS days_peak_dom_jj,
     COALESCE(days_peak_dom, 0) AS days_peak_dom,
     COALESCE(days_peak, 0) AS days_peak,
@@ -207,11 +207,10 @@ for _, fight in new_fights_df.iterrows():
             elo_ratings_dom_jj[fight['winner_id']] = winner_elo_after
             elo_ratings_dom_jj[fight['loser_id']] = loser_elo_after
             results_dom_jj.append({**fight_data,
-                                        'winner_elo_before': winner_elo_before,
-                                        'winner_elo_after': winner_elo_after,
-                                        'loser_elo_before': loser_elo_before,
-                                        'loser_elo_after': loser_elo_after})
-            
+                                    'winner_elo_before': winner_elo_before,
+                                    'winner_elo_after': winner_elo_after,
+                                    'loser_elo_before': loser_elo_before,
+                                    'loser_elo_after': loser_elo_after})
 
 df_normal = pd.DataFrame(results_normal)
 df_dom = pd.DataFrame(results_dom)
@@ -221,7 +220,7 @@ df_normal['event_date'] = df_normal['event_date'].astype(str)
 df_dom['event_date'] = df_dom['event_date'].astype(str)
 df_dom_jj['event_date'] = df_dom_jj['event_date'].astype(str)
 
-# Get rid of id columns, let it be handled by supabase
+# Get rid of id columns, let it be handled by Supabase
 data_normal = df_normal.drop(columns=['id'], errors='ignore').to_dict(orient='records')
 data_dom = df_dom.drop(columns=['id'], errors='ignore').to_dict(orient='records')
 data_pico = df_dom_jj.drop(columns=['id'], errors='ignore').to_dict(orient='records')
@@ -289,25 +288,49 @@ for new_fighter in new_fighters:
 
 new_fighters = filtered_new_fighters  # Update the new_fighters list
 
-# Create a df from the list of new rows
+# Create a df from the list of new fighters
 new_fighters_df = pd.DataFrame(new_fighters)
 
 # Concatenate new_fighters_df with final_df
 final_df = pd.concat([final_df, new_fighters_df], ignore_index=True, sort=False)
 
-# After concatenation, check for duplicates again
+# After concatenation, remove any duplicates
 final_df = final_df.drop_duplicates(subset='fighter_id', keep='first')
 
 # Fill NaN values appropriately
-numeric_cols = ['days_peak', 'days_peak_dom', 'days_peak_dom_jj', 'peak_elo_dom_jj',
-                'peak_elo_dom', 'peak_elo', 'ufc_position', 'current_elo',
-                'current_elo_dom', 'current_elo_dom_jj', 'peak_elo_dom_jj',
-                'peak_elo_dom', 'peak_elo']
-final_df[numeric_cols] = final_df[numeric_cols].fillna(0)
 
-string_cols = ['name', 'best_win_dom_jj', 'best_win_dom', 'best_win', 'nationality',
-               'birthplace', 'birth_date', 'association', 'weight_class', 'ufc_class']
-final_df[string_cols] = final_df[string_cols].fillna('unknown')
+# Define numeric and string columns
+numeric_cols = [
+    'days_peak', 'days_peak_dom', 'days_peak_dom_jj', 'peak_elo_dom_jj',
+    'peak_elo_dom', 'peak_elo', 'ufc_position', 'current_elo',
+    'current_elo_dom', 'current_elo_dom_jj'
+]
+
+string_cols = [
+    'name', 'best_win_dom_jj', 'best_win_dom', 'best_win', 'nationality',
+    'birthplace', 'birth_date', 'association', 'weight_class', 'ufc_class'
+]
+
+# Remove duplicates from column lists
+numeric_cols = list(dict.fromkeys(numeric_cols))
+string_cols = list(dict.fromkeys(string_cols))
+
+# Verify that all columns exist in final_df
+existing_numeric_cols = [col for col in numeric_cols if col in final_df.columns]
+missing_numeric_cols = [col for col in numeric_cols if col not in final_df.columns]
+
+if missing_numeric_cols:
+    print(f"Warning: The following numeric columns are missing in final_df and will be skipped: {missing_numeric_cols}")
+
+existing_string_cols = [col for col in string_cols if col in final_df.columns]
+missing_string_cols = [col for col in string_cols if col not in final_df.columns]
+
+if missing_string_cols:
+    print(f"Warning: The following string columns are missing in final_df and will be skipped: {missing_string_cols}")
+
+# Perform the fillna operation only on existing columns
+final_df[existing_numeric_cols] = final_df[existing_numeric_cols].fillna(0)
+final_df[existing_string_cols] = final_df[existing_string_cols].fillna('unknown')
 
 # Ensure 'rn' column is present if required
 if 'rn' in final_df.columns:
