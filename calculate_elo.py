@@ -4,8 +4,7 @@ import os
 import sys
 from supabase import create_client, Client
 
-
-#define cleanup function
+# Define cleanup function
 def clean_fighter_id(fid):
     if fid is None or fid == '':
         return None
@@ -13,32 +12,30 @@ def clean_fighter_id(fid):
         fid_int = int(float(fid))
         return str(fid_int)
     except (ValueError, TypeError):
-        return None   
+        return None
 
-
-
-
+# Initialize Supabase client
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-#scraped in previous script
+# Scraped in previous script
 response = supabase.table('mma_fight_results').select('*').execute()
 new_fights_df = pd.DataFrame(response.data)
 
-#conditions for 'dom'
+# Conditions for 'dom'
 conditions = [
     new_fights_df['winby'].str.contains('TKO|KO', case=False, regex=True, na=False),
     new_fights_df['winby'].str.contains('Submission', case=False, regex=True, na=False)
 ]
 
-#outputs
+# Outputs
 choices = ['ko', 'sub']
 
-# apply conditions, create new column 'dom'
+# Apply conditions, create new column 'dom'
 new_fights_df['dom'] = np.select(conditions, choices, default='dec')
 
-#previously finished table to update
+# Previously finished table to update
 response = supabase.table('fighters_enriched').select('''
     name,
     COALESCE(peak_elo, peak_elo_dom, peak_elo_dom_jj, 0) AS peak_elo,
@@ -52,40 +49,51 @@ response = supabase.table('fighters_enriched').select('''
     COALESCE(days_peak_dom, 0) AS days_peak_dom,
     COALESCE(days_peak, 0) AS days_peak,
 
-    COALESCE(best_win_dom_jj, 'none') AS best_win_dom_jj,
-    COALESCE(best_win_dom, 'none') AS best_win_dom,
-    COALESCE(best_win, 'none') AS best_win,
-    COALESCE(nationality, 'none') AS nationality,
-    COALESCE(birthplace, 'none') AS birthplace,
-    COALESCE(birth_date, 'none') AS birth_date,
-    COALESCE(association, 'none') AS association,
-    COALESCE(weight_class, 'none') AS weight_class,
-    COALESCE(ufc_position, 'none') AS ufc_position,
-    COALESCE(ufc_class, 'none') AS ufc_class,
+    COALESCE(best_win_dom_jj, 'unknown') AS best_win_dom_jj,
+    COALESCE(best_win_dom, 'unknown') AS best_win_dom,
+    COALESCE(best_win, 'unknown') AS best_win,
+    COALESCE(nationality, 'unknown') AS nationality,
+    COALESCE(birthplace, 'unknown') AS birthplace,
+    COALESCE(birth_date, 'unknown') AS birth_date,
+    COALESCE(association, 'unknown') AS association,
+    COALESCE(weight_class, 'unknown') AS weight_class,
+    COALESCE(ufc_position, 0) AS ufc_position,
+    COALESCE(ufc_class, 'unknown') AS ufc_class,
     fighter_id
 ''').limit(1000000).execute()
 
 final_df = pd.DataFrame(response.data)
-print(f"Number of fighters in final_df added right after final_df is created from response: {final_df['fighter_id'].nunique()}")
+print(f"Number of fighters in final_df right after creation: {final_df['fighter_id'].nunique()}")
 
-#eensure IDs are strings for consistent merging /edit adding a cleanup function to account for decimals
+# Apply the cleaning function to fighter IDs
 final_df['fighter_id'] = final_df['fighter_id'].apply(clean_fighter_id)
 new_fights_df['winner_id'] = new_fights_df['winner_id'].apply(clean_fighter_id)
 new_fights_df['loser_id'] = new_fights_df['loser_id'].apply(clean_fighter_id)
 
-#Initialize elos
+# Ensure there are no None or NaN fighter_ids
+final_df = final_df[final_df['fighter_id'].notnull()]
+new_fights_df = new_fights_df[new_fights_df['winner_id'].notnull()]
+new_fights_df = new_fights_df[new_fights_df['loser_id'].notnull()]
+
+# Check for duplicates in final_df before any processing
+initial_duplicates = final_df[final_df['fighter_id'].duplicated(keep=False)]
+
+if not initial_duplicates.empty:
+    print("Duplicates found in final_df before processing:")
+    print(initial_duplicates)
+    # Drop duplicates, keeping the first occurrence
+    final_df = final_df.drop_duplicates(subset='fighter_id', keep='first')
+    print("Duplicates have been removed from final_df.")
+
+# Initialize elo dictionaries
 current_elos_normal = {}
 current_elos_dom = {}
 current_elos_dom_jj = {}
 
-
-
-
-#list to collect new fighters
+# List to collect new fighters
 new_fighters = []
 
-#MATCHING ERROR CHECKING LOGS
-
+# MATCHING ERROR CHECKING LOGS
 print("\nSample fighter_ids from final_df:")
 print(final_df['fighter_id'].head(5).tolist())
 
@@ -94,18 +102,16 @@ print(new_fights_df['winner_id'].head(5).tolist())
 
 print("\nSample loser_ids from new_fights_df:")
 print(new_fights_df['loser_id'].head(5).tolist())
+# END MATCHING ERROR CHECKING LOGS
 
-#MATCHING ERROR CHECKING LOGS
-
-# map existing fighters to their current elos
-elo_columns = ['current_elo', 'current_elo_dom', 'current_elo_dom_jj']
+# Map existing fighters to their current elos
 for _, row in final_df.iterrows():
     fighter_id = row['fighter_id']
     current_elos_normal[fighter_id] = row['current_elo']
     current_elos_dom[fighter_id] = row['current_elo_dom']
     current_elos_dom_jj[fighter_id] = row['current_elo_dom_jj']
 
-# identifying new fighters and assigning elo, concatenation creates a series with both the winner and loser id (fighter_id) and names (figher_name) to be iterated through.  
+# Identifying new fighters and assigning elo
 for fighter_id, fighter_name in zip(
     pd.concat([new_fights_df['winner_id'], new_fights_df['loser_id']]),
     pd.concat([new_fights_df['winner_name'], new_fights_df['loser_name']])
@@ -116,14 +122,10 @@ for fighter_id, fighter_name in zip(
         current_elos_dom_jj[fighter_id] = 1200.0
         new_fighters.append({'fighter_id': fighter_id, 'name': fighter_name})
 
-print(f"Number of fighters in final_df added later: {final_df['fighter_id'].nunique()}")
+print(f"Number of fighters in final_df after cleaning: {final_df['fighter_id'].nunique()}")
 print(f"Number of fighters in current_elos_normal: {len(current_elos_normal)}")
 
-
-
-
-
-# define elo calculation functions
+# Define elo calculation functions
 def expected_score(elo_a, elo_b):
     return 1 / (1 + 10 ** ((elo_b - elo_a) / 400))
 
@@ -136,21 +138,21 @@ def update_elo(winner_elo, loser_elo, k_factor, is_ko_or_sub, is_round_one, vari
     new_loser_elo = loser_elo + k_factor * (0 - (1 - expected_win))
     return round(new_winner_elo, 2), round(new_loser_elo, 2)
 
-# initialize elo ratings for calculations
+# Initialize elo ratings for calculations
 elo_ratings_normal = current_elos_normal.copy()
 elo_ratings_dom = current_elos_dom.copy()
 elo_ratings_dom_jj = current_elos_dom_jj.copy()
 
-# initialize  lists to store fight results
+# Initialize lists to store fight results
 results_normal = []
 results_dom = []
 results_dom_jj = []
 
-# sort fights by date
+# Sort fights by date
 new_fights_df['event_date'] = pd.to_datetime(new_fights_df['event_date'])
 new_fights_df.sort_values('event_date', inplace=True)
 
-# process each fight
+# Process each fight
 for _, fight in new_fights_df.iterrows():
     fight_data = {
         'id': fight['id'],
@@ -170,19 +172,21 @@ for _, fight in new_fights_df.iterrows():
 
     for variation in ['normal', 'dom', 'dom_jj']:
         k_factor = 60
-        winner_elo_before = elo_ratings_normal[fight['winner_id']] if variation == 'normal' else \
-                            elo_ratings_dom[fight['winner_id']] if variation == 'dom' else \
-                            elo_ratings_dom_jj[fight['winner_id']]
-
-        loser_elo_before = elo_ratings_normal[fight['loser_id']] if variation == 'normal' else \
-                           elo_ratings_dom[fight['loser_id']] if variation == 'dom' else \
-                           elo_ratings_dom_jj[fight['loser_id']]
+        if variation == 'normal':
+            winner_elo_before = elo_ratings_normal[fight['winner_id']]
+            loser_elo_before = elo_ratings_normal[fight['loser_id']]
+        elif variation == 'dom':
+            winner_elo_before = elo_ratings_dom[fight['winner_id']]
+            loser_elo_before = elo_ratings_dom[fight['loser_id']]
+        else:
+            winner_elo_before = elo_ratings_dom_jj[fight['winner_id']]
+            loser_elo_before = elo_ratings_dom_jj[fight['loser_id']]
 
         winner_elo_after, loser_elo_after = update_elo(
             winner_elo_before, loser_elo_before, k_factor, is_ko_or_sub, is_round_one, variation
         )
 
-        # update ELO ratings
+        # Update ELO ratings
         if variation == 'normal':
             elo_ratings_normal[fight['winner_id']] = winner_elo_after
             elo_ratings_normal[fight['loser_id']] = loser_elo_after
@@ -217,22 +221,17 @@ df_normal['event_date'] = df_normal['event_date'].astype(str)
 df_dom['event_date'] = df_dom['event_date'].astype(str)
 df_dom_jj['event_date'] = df_dom_jj['event_date'].astype(str)
 
-
-#get rid of id columns let it e handled by supabase
-
+# Get rid of id columns, let it be handled by supabase
 data_normal = df_normal.drop(columns=['id'], errors='ignore').to_dict(orient='records')
 data_dom = df_dom.drop(columns=['id'], errors='ignore').to_dict(orient='records')
 data_pico = df_dom_jj.drop(columns=['id'], errors='ignore').to_dict(orient='records')
 
-
+# Insert fight results into Supabase tables
 supabase.table('fighters_regular_raw').insert(data_normal).execute()
 supabase.table('fighters_dom_raw').insert(data_dom).execute()
 supabase.table('fighters_dom_jj_raw').insert(data_pico).execute()
 
-
-
-
-# create dfs of new elos
+# Create dataframe of new elos
 elo_updates = pd.DataFrame({
     'fighter_id': list(elo_ratings_normal.keys()),
     'current_elo': list(elo_ratings_normal.values()),
@@ -240,113 +239,99 @@ elo_updates = pd.DataFrame({
     'current_elo_dom_jj': list(elo_ratings_dom_jj.values())
 })
 
-# merge with final_df
-final_df = final_df.merge(elo_updates, on='fighter_id', how='outer', suffixes=('', '_new'))
+# Ensure fighter_id is of string type
+final_df['fighter_id'] = final_df['fighter_id'].astype(str)
+elo_updates['fighter_id'] = elo_updates['fighter_id'].astype(str)
 
-# update current and peak elos
-for idx, row in final_df.iterrows():
-    for variation in ['normal', 'dom', 'dom_jj']:
-        curr_elo_col = f'current_elo_{variation}' if variation != 'normal' else 'current_elo'
-        peak_elo_col = f'peak_elo_{variation}' if variation != 'normal' else 'peak_elo'
-        curr_elo_new = row.get(f'{curr_elo_col}_new', np.nan)
+# Set fighter_id as the index for both dataframes
+final_df.set_index('fighter_id', inplace=True)
+elo_updates.set_index('fighter_id', inplace=True)
 
-        if not np.isnan(curr_elo_new):
-            final_df.at[idx, curr_elo_col] = curr_elo_new
-            # convert peak_elo to float
-            peak_elo = float(row[peak_elo_col]) if row[peak_elo_col] else 0.0  
-            if curr_elo_new > peak_elo:
-                final_df.at[idx, peak_elo_col] = curr_elo_new
-                final_df.at[idx, f'days_peak_{variation}' if variation != 'normal' else 'days_peak'] = 0  # placeholder value
+# Update final_df with elo_updates
+final_df.update(elo_updates)
 
-# handle new fighters
-new_rows = []
+# Reset index to turn fighter_id back into a column
+final_df.reset_index(inplace=True)
+
+# Ensure unique fighter_ids when adding new fighters
+existing_fighter_ids = set(final_df['fighter_id'])
+
+# Filter out any new_fighters that already exist in final_df
+filtered_new_fighters = []
 for new_fighter in new_fighters:
     fighter_id = new_fighter['fighter_id']
-    new_row = {
-        'fighter_id': fighter_id,
-        'name': new_fighter['name'],
-        'current_elo': current_elos_normal[fighter_id],
-        'peak_elo': current_elos_normal[fighter_id],
-        'current_elo_dom': current_elos_dom[fighter_id],
-        'peak_elo_dom': current_elos_dom[fighter_id],
-        'current_elo_dom_jj': current_elos_dom_jj[fighter_id],
-        'peak_elo_dom_jj': current_elos_dom_jj[fighter_id],
-        'days_peak': 0,
-        'days_peak_dom': 0,
-        'days_peak_dom_jj': 0,
-        'nationality': 'unknown',
-        'birthplace': 'unknown',
-        'birth_date': 'unknown',
-        'association': 'unknown',
-        'weight_class': 'unknown',
-        'ufc_position': 0,
-        'ufc_class': 'unknown'
-    }
-    new_rows.append(new_row)
+    if fighter_id not in existing_fighter_ids:
+        # Add missing fields with default values
+        new_fighter.update({
+            'current_elo': current_elos_normal[fighter_id],
+            'peak_elo': current_elos_normal[fighter_id],
+            'current_elo_dom': current_elos_dom[fighter_id],
+            'peak_elo_dom': current_elos_dom[fighter_id],
+            'current_elo_dom_jj': current_elos_dom_jj[fighter_id],
+            'peak_elo_dom_jj': current_elos_dom_jj[fighter_id],
+            'days_peak': 0,
+            'days_peak_dom': 0,
+            'days_peak_dom_jj': 0,
+            'best_win_dom_jj': 'unknown',
+            'best_win_dom': 'unknown',
+            'best_win': 'unknown',
+            'nationality': 'unknown',
+            'birthplace': 'unknown',
+            'birth_date': 'unknown',
+            'association': 'unknown',
+            'weight_class': 'unknown',
+            'ufc_position': 0,
+            'ufc_class': 'unknown'
+        })
+        filtered_new_fighters.append(new_fighter)
+    else:
+        print(f"Skipping fighter_id {fighter_id} as it already exists in final_df.")
 
-# create a df from the list of new rows
-new_fighters_df = pd.DataFrame(new_rows)
+new_fighters = filtered_new_fighters  # Update the new_fighters list
 
-# concat new df with the final_df
-final_df = pd.concat([final_df, new_fighters_df], ignore_index=True)
+# Create a df from the list of new rows
+new_fighters_df = pd.DataFrame(new_fighters)
 
-# remove temporary '_new' columns
-final_df.drop(columns=[col for col in final_df.columns if col.endswith('_new')], inplace=True)
+# Concatenate new_fighters_df with final_df
+final_df = pd.concat([final_df, new_fighters_df], ignore_index=True, sort=False)
 
+# After concatenation, check for duplicates again
+final_df = final_df.drop_duplicates(subset='fighter_id', keep='first')
 
-for col in ['days_peak', 'days_peak_dom', 'days_peak_dom_jj', 'name', 'peak_elo_dom_jj', 'best_win_dom_jj', 'peak_elo_dom', 'best_win_dom', 'peak_elo', 'best_win', 'nationality', 'birthplace', 'birth_date', 'association', 'weight_class', 'ufc_position', 'ufc_class']:
-    final_df[col] = final_df[col].fillna(0)
+# Fill NaN values appropriately
+numeric_cols = ['days_peak', 'days_peak_dom', 'days_peak_dom_jj', 'peak_elo_dom_jj',
+                'peak_elo_dom', 'peak_elo', 'ufc_position', 'current_elo',
+                'current_elo_dom', 'current_elo_dom_jj', 'peak_elo_dom_jj',
+                'peak_elo_dom', 'peak_elo']
+final_df[numeric_cols] = final_df[numeric_cols].fillna(0)
 
+string_cols = ['name', 'best_win_dom_jj', 'best_win_dom', 'best_win', 'nationality',
+               'birthplace', 'birth_date', 'association', 'weight_class', 'ufc_class']
+final_df[string_cols] = final_df[string_cols].fillna('unknown')
 
-
-final_df['rn'] = final_df['rn'].fillna(1).astype(int)
+# Ensure 'rn' column is present if required
+if 'rn' in final_df.columns:
+    final_df['rn'] = final_df['rn'].fillna(1).astype(int)
 
 data_final = final_df.to_dict(orient='records')
 
-# for idx, row in final_df.head(10).iterrows():
-#     print(f"Row {idx + 1}")
-#     for col in final_df.columns:
-#         print(f"{col}: {row[col]}")
-#     print("\n" + "-" * 50 + "\n")
+# Final duplicate check
+final_duplicates = final_df[final_df['fighter_id'].duplicated(keep=False)]
 
-# nan_columns = []
-# for col in final_df.columns:
-#     if final_df[col].isna().any():
-#         nan_columns.append(col)
-
-# # If NaN values exist, log the columns and terminate the script
-# if nan_columns:
-#     print(f"NaN detected in columns: {nan_columns}")
-#     sys.exit(1)
- 
- 
-duplicate_mask = final_df['fighter_id'].duplicated(keep=False)
-duplicates = final_df[duplicate_mask]
-
-if not duplicates.empty:
-    print(len(duplicates), "Duplicate fighter_ids detected in final_df:")
-    
- 
-    grouped_duplicates = duplicates.groupby('fighter_id')
-    
-    for idx, (fighter_id, group) in enumerate(grouped_duplicates):
-        if idx >= 5:
-            break
-
-        print(f"\nDuplicate group {idx + 1} for fighter_id '{fighter_id}':")
-        print(group.to_string(index=False))
-        
-else:
-    print("No duplicates found in final_df.")
-
-if not duplicates.empty:
+if not final_duplicates.empty:
+    print("Duplicates found in final_df after processing:")
+    print(final_duplicates)
     sys.exit(1)
+else:
+    print("No duplicates found in final_df after processing.")
 
+# Update Supabase tables
+# Delete existing data (if needed)
+supabase.table('fighters_enriched').delete().neq('name', 'unknown').execute()
 
-
-
-supabase.table('fighters_enriched').delete().neq('name', 'None').execute()
+# Insert updated data
 supabase.table('fighters_enriched').insert(data_final).execute()
 
-
-supabase.table('new_fighters').insert(new_fighters).execute()
+# Insert new fighters into 'new_fighters' table
+if new_fighters:
+    supabase.table('new_fighters').insert(new_fighters).execute()
