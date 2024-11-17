@@ -304,7 +304,7 @@ for new_fighter in new_fighters:
             'birth_date': 'unknown',
             'association': 'unknown',
             'weight_class': 'unknown',
-            'ufc_position': 0,
+            'ufc_position': -1,
             'ufc_class': 'unknown'
         })
         filtered_new_fighters.append(new_fighter)
