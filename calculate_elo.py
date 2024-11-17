@@ -5,6 +5,19 @@ import sys
 from supabase import create_client, Client
 
 
+#define cleanup function
+def clean_fighter_id(fid):
+    if fid is None or fid == '':
+        return None
+    try:
+        fid_int = int(float(fid))
+        return str(fid_int)
+    except (ValueError, TypeError):
+        return None   
+
+
+
+
 SUPABASE_URL = os.environ.get('SUPABASE_URL')
 SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -55,10 +68,10 @@ response = supabase.table('fighters_enriched').select('''
 final_df = pd.DataFrame(response.data)
 print(f"Number of fighters in final_df added right after final_df is created from response: {final_df['fighter_id'].nunique()}")
 
-#eensure IDs are strings for consistent merging
-final_df['fighter_id'] = final_df['fighter_id'].astype(str)
-new_fights_df['winner_id'] = new_fights_df['winner_id'].astype(str)
-new_fights_df['loser_id'] = new_fights_df['loser_id'].astype(str)
+#eensure IDs are strings for consistent merging /edit adding a cleanup function to account for decimals
+final_df['fighter_id'] = final_df['fighter_id'].apply(clean_fighter_id)
+new_fights_df['winner_id'] = new_fights_df['winner_id'].apply(clean_fighter_id)
+new_fights_df['loser_id'] = new_fights_df['loser_id'].apply(clean_fighter_id)
 
 #Initialize elos
 current_elos_normal = {}
@@ -105,6 +118,9 @@ for fighter_id, fighter_name in zip(
 
 print(f"Number of fighters in final_df added later: {final_df['fighter_id'].nunique()}")
 print(f"Number of fighters in current_elos_normal: {len(current_elos_normal)}")
+
+
+
 
 
 # define elo calculation functions
