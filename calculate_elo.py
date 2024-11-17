@@ -3,6 +3,31 @@ import numpy as np
 import os
 import sys
 from supabase import create_client, Client
+import time
+
+#define batch function
+
+def batch_insert(supabase_table, data, batch_size=1000):
+    total_records = len(data)
+    print(f"Starting batch insert into '{supabase_table}' with {total_records} records.")
+    for i in range(0, total_records, batch_size):
+        batch = data[i:i + batch_size]
+        print(f"Inserting records {i + 1} to {i + len(batch)}...")
+        retries = 3
+        while retries > 0:
+            try:
+                supabase.table(supabase_table).insert(batch).execute()
+                break  # Break the retry loop if successful
+            except Exception as e:
+                retries -= 1
+                print(f"Error inserting records {i + 1} to {i + len(batch)}: {e}")
+                if retries > 0:
+                    print(f"Retrying... ({3 - retries} retries left)")
+                    time.sleep(1)  # Wait a bit before retrying
+                else:
+                    print("Failed to insert batch after retries. Exiting.")
+                    sys.exit(1)
+    print(f"Finished batch insert into '{supabase_table}'.")
 
 # Define cleanup function
 def clean_fighter_id(fid):
@@ -353,7 +378,8 @@ else:
 supabase.table('fighters_enriched').delete().neq('name', 'unknown').execute()
 
 # Insert updated data
-supabase.table('fighters_enriched').insert(data_final).execute()
+data_final_records = data_final 
+batch_insert('fighters_enriched', data_final_records, batch_size=10000)
 
 # Insert new fighters into 'new_fighters' table
 if new_fighters:
