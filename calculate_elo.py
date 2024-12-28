@@ -61,20 +61,16 @@ choices = ['ko', 'sub']
 new_fights_df['dom'] = np.select(conditions, choices, default='dec')
 
 # Previously finished table to update
-response = supabase.table('fighters_enriched').select('''
+response = supabase.table('fighters_enriched_new').select('''
     name,
-    COALESCE(peak_elo, peak_elo_dom, peak_elo_dom_jj, 0) AS peak_elo,
-    COALESCE(peak_elo_dom, peak_elo, peak_elo_dom_jj, 0) AS peak_elo_dom,
-    COALESCE(peak_elo_dom_jj, peak_elo, peak_elo_dom, 0) AS peak_elo_dom_jj,
-    COALESCE(current_elo, current_elo_dom, current_elo_dom_jj, 0) AS current_elo,
-    COALESCE(current_elo_dom, current_elo, current_elo_dom_jj, 0) AS current_elo_dom,
-    COALESCE(current_elo_dom_jj, current_elo, current_elo_dom, 0) AS current_elo_dom_jj,
+    COALESCE(peak_elo, peak_elo_dom, 0) AS peak_elo,
+    COALESCE(peak_elo_dom, peak_elo, 0) AS peak_elo_dom,
+    COALESCE(current_elo, current_elo_dom, 0) AS current_elo,
+    COALESCE(current_elo_dom, current_elo, 0) AS current_elo_dom,
 
-    COALESCE(days_peak_dom_jj, 0) AS days_peak_dom_jj,
     COALESCE(days_peak_dom, 0) AS days_peak_dom,
     COALESCE(days_peak, 0) AS days_peak,
 
-    COALESCE(best_win_dom_jj, 'unknown') AS best_win_dom_jj,
     COALESCE(best_win_dom, 'unknown') AS best_win_dom,
     COALESCE(best_win, 'unknown') AS best_win,
     COALESCE(nationality, 'unknown') AS nationality,
@@ -82,8 +78,11 @@ response = supabase.table('fighters_enriched').select('''
     COALESCE(birth_date, 'unknown') AS birth_date,
     COALESCE(association, 'unknown') AS association,
     COALESCE(weight_class, 'unknown') AS weight_class,
-    COALESCE(ufc_position, 0) AS ufc_position,
-    COALESCE(ufc_class, 'unknown') AS ufc_class,
+    COALESCE(age, 'unknown') AS age,
+    COALESCE(weight, 'unknown') AS weight,
+    COALESCE(height, 'unknown') AS height,
+    COALESCE(nickname, 'unknown') AS nickname,                                                                                                                                                                                                                                       
+                                                             
     fighter_id
 ''').limit(1000000).execute()
 
@@ -113,7 +112,6 @@ if not initial_duplicates.empty:
 # Initialize elo dictionaries
 current_elos_normal = {}
 current_elos_dom = {}
-current_elos_dom_jj = {}
 
 # List to collect new fighters
 new_fighters = []
@@ -134,7 +132,6 @@ for _, row in final_df.iterrows():
     fighter_id = row['fighter_id']
     current_elos_normal[fighter_id] = row['current_elo']
     current_elos_dom[fighter_id] = row['current_elo_dom']
-    current_elos_dom_jj[fighter_id] = row['current_elo_dom_jj']
 
 # Identifying new fighters and assigning elo
 for fighter_id, fighter_name in zip(
@@ -144,7 +141,6 @@ for fighter_id, fighter_name in zip(
     if fighter_id not in current_elos_normal:
         current_elos_normal[fighter_id] = 1200.0
         current_elos_dom[fighter_id] = 1200.0
-        current_elos_dom_jj[fighter_id] = 1200.0
         new_fighters.append({'fighter_id': fighter_id, 'name': fighter_name})
 
 print(f"Number of fighters in final_df after cleaning: {final_df['fighter_id'].nunique()}")
@@ -155,7 +151,7 @@ def expected_score(elo_a, elo_b):
     return 1 / (1 + 10 ** ((elo_b - elo_a) / 400))
 
 def update_elo(winner_elo, loser_elo, k_factor, is_ko_or_sub, is_round_one, variation):
-    if variation in ['dom', 'dom_jj']:
+    if variation in ['dom']:
         if is_ko_or_sub:
             k_factor *= 2 if is_round_one else 1.5
     expected_win = expected_score(winner_elo, loser_elo)
@@ -166,12 +162,10 @@ def update_elo(winner_elo, loser_elo, k_factor, is_ko_or_sub, is_round_one, vari
 # Initialize elo ratings for calculations
 elo_ratings_normal = current_elos_normal.copy()
 elo_ratings_dom = current_elos_dom.copy()
-elo_ratings_dom_jj = current_elos_dom_jj.copy()
 
 # Initialize lists to store fight results
 results_normal = []
 results_dom = []
-results_dom_jj = []
 
 # Sort fights by date
 new_fights_df['event_date'] = pd.to_datetime(new_fights_df['event_date'])
@@ -195,7 +189,7 @@ for _, fight in new_fights_df.iterrows():
     is_ko_or_sub = fight['dom'] in ['ko', 'sub']
     is_round_one = str(fight['round']) == '1'
 
-    for variation in ['normal', 'dom', 'dom_jj']:
+    for variation in ['normal', 'dom']:
         k_factor = 60
         if variation == 'normal':
             winner_elo_before = elo_ratings_normal[fight['winner_id']]
@@ -203,9 +197,6 @@ for _, fight in new_fights_df.iterrows():
         elif variation == 'dom':
             winner_elo_before = elo_ratings_dom[fight['winner_id']]
             loser_elo_before = elo_ratings_dom[fight['loser_id']]
-        else:
-            winner_elo_before = elo_ratings_dom_jj[fight['winner_id']]
-            loser_elo_before = elo_ratings_dom_jj[fight['loser_id']]
 
         winner_elo_after, loser_elo_after = update_elo(
             winner_elo_before, loser_elo_before, k_factor, is_ko_or_sub, is_round_one, variation
@@ -228,39 +219,27 @@ for _, fight in new_fights_df.iterrows():
                                 'winner_elo_after': winner_elo_after,
                                 'loser_elo_before': loser_elo_before,
                                 'loser_elo_after': loser_elo_after})
-        else:
-            elo_ratings_dom_jj[fight['winner_id']] = winner_elo_after
-            elo_ratings_dom_jj[fight['loser_id']] = loser_elo_after
-            results_dom_jj.append({**fight_data,
-                                    'winner_elo_before': winner_elo_before,
-                                    'winner_elo_after': winner_elo_after,
-                                    'loser_elo_before': loser_elo_before,
-                                    'loser_elo_after': loser_elo_after})
+
 
 df_normal = pd.DataFrame(results_normal)
 df_dom = pd.DataFrame(results_dom)
-df_dom_jj = pd.DataFrame(results_dom_jj)
 
 df_normal['event_date'] = df_normal['event_date'].astype(str)
 df_dom['event_date'] = df_dom['event_date'].astype(str)
-df_dom_jj['event_date'] = df_dom_jj['event_date'].astype(str)
 
 # Get rid of id columns, let it be handled by Supabase
 data_normal = df_normal.drop(columns=['id'], errors='ignore').to_dict(orient='records')
 data_dom = df_dom.drop(columns=['id'], errors='ignore').to_dict(orient='records')
-data_pico = df_dom_jj.drop(columns=['id'], errors='ignore').to_dict(orient='records')
 
 # Insert fight results into Supabase tables
 supabase.table('fighters_regular_raw').insert(data_normal).execute()
 supabase.table('fighters_dom_raw').insert(data_dom).execute()
-supabase.table('fighters_dom_jj_raw').insert(data_pico).execute()
 
 # Create dataframe of new elos
 elo_updates = pd.DataFrame({
     'fighter_id': list(elo_ratings_normal.keys()),
     'current_elo': list(elo_ratings_normal.values()),
     'current_elo_dom': list(elo_ratings_dom.values()),
-    'current_elo_dom_jj': list(elo_ratings_dom_jj.values())
 })
 
 # Ensure fighter_id is of string type
@@ -291,12 +270,8 @@ for new_fighter in new_fighters:
             'peak_elo': current_elos_normal[fighter_id],
             'current_elo_dom': current_elos_dom[fighter_id],
             'peak_elo_dom': current_elos_dom[fighter_id],
-            'current_elo_dom_jj': current_elos_dom_jj[fighter_id],
-            'peak_elo_dom_jj': current_elos_dom_jj[fighter_id],
             'days_peak': 0,
             'days_peak_dom': 0,
-            'days_peak_dom_jj': 0,
-            'best_win_dom_jj': 'unknown',
             'best_win_dom': 'unknown',
             'best_win': 'unknown',
             'nationality': 'unknown',
@@ -304,8 +279,10 @@ for new_fighter in new_fighters:
             'birth_date': 'unknown',
             'association': 'unknown',
             'weight_class': 'unknown',
-            'ufc_position': -1,
-            'ufc_class': 'unknown'
+            'age': 'unknown',
+            'weight' : 'unknown',
+            'height' : 'unknown',
+            'nickname' : 'unknown'
         })
         filtered_new_fighters.append(new_fighter)
     else:
@@ -326,14 +303,13 @@ final_df = final_df.drop_duplicates(subset='fighter_id', keep='first')
 
 # Define numeric and string columns
 numeric_cols = [
-    'days_peak', 'days_peak_dom', 'days_peak_dom_jj', 'peak_elo_dom_jj',
-    'peak_elo_dom', 'peak_elo', 'ufc_position', 'current_elo',
-    'current_elo_dom', 'current_elo_dom_jj'
+    'days_peak', 'days_peak_dom','peak_elo_dom', 'peak_elo', 'current_elo',
+    'current_elo_dom'
 ]
 
 string_cols = [
-    'name', 'best_win_dom_jj', 'best_win_dom', 'best_win', 'nationality',
-    'birthplace', 'birth_date', 'association', 'weight_class', 'ufc_class'
+    'name', 'best_win_dom', 'best_win', 'nationality',
+    'birthplace', 'birth_date', 'association', 'weight_class', 'age', 'weight', 'height', 'nickname'
 ]
 
 # Remove duplicates from column lists
@@ -375,11 +351,11 @@ else:
 
 # Update Supabase tables
 # Delete existing data (if needed)
-supabase.table('fighters_enriched').delete().neq('name', 'unknown').execute()
+supabase.table('fighters_enriched_new').delete().neq('name', 'unknown').execute()
 
 # Insert updated data
 data_final_records = data_final 
-batch_insert('fighters_enriched', data_final_records, batch_size=10000)
+batch_insert('fighters_enriched_new', data_final_records, batch_size=10000)
 
 # Insert new fighters into 'new_fighters' table
 if new_fighters:
