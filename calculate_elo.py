@@ -61,32 +61,44 @@ choices = ['ko', 'sub']
 new_fights_df['dom'] = np.select(conditions, choices, default='dec')
 
 # Previously finished table to update
-response = supabase.table('fighters_enriched_new').select('''
-    name,
-    COALESCE(peak_elo, peak_elo_dom, 0) AS peak_elo,
-    COALESCE(peak_elo_dom, peak_elo, 0) AS peak_elo_dom,
-    COALESCE(current_elo, current_elo_dom, 0) AS current_elo,
-    COALESCE(current_elo_dom, current_elo, 0) AS current_elo_dom,
+records = []
+limit = 50000
+offset = 0
 
-    COALESCE(days_peak_dom, 0) AS days_peak_dom,
-    COALESCE(days_peak, 0) AS days_peak,
+while True:
+  
+    response = supabase.table('fighters_enriched_new').select('''
+        name,
+        COALESCE(peak_elo, peak_elo_dom, 0) AS peak_elo,
+        COALESCE(peak_elo_dom, peak_elo, 0) AS peak_elo_dom,
+        COALESCE(current_elo, current_elo_dom, 0) AS current_elo,
+        COALESCE(current_elo_dom, current_elo, 0) AS current_elo_dom,
+        COALESCE(days_peak_dom, 0) AS days_peak_dom,
+        COALESCE(days_peak, 0) AS days_peak,
+        COALESCE(best_win_dom, 'unknown') AS best_win_dom,
+        COALESCE(best_win, 'unknown') AS best_win,
+        COALESCE(nationality, 'unknown') AS nationality,
+        COALESCE(birthplace, 'unknown') AS birthplace,
+        COALESCE(birth_date, 'unknown') AS birth_date,
+        COALESCE(association, 'unknown') AS association,
+        COALESCE(weight_class, 'unknown') AS weight_class,
+        COALESCE(age, 'unknown') AS age,
+        COALESCE(weight, 'unknown') AS weight,
+        COALESCE(height, 'unknown') AS height,
+        COALESCE(nickname, 'unknown') AS nickname,
+        fighter_id
+    ''').range(offset, offset + limit - 1).execute()
+    
+    data = response.data
+    
+    if not data:
+        break
+    
+    records.extend(data)
+    offset += limit
 
-    COALESCE(best_win_dom, 'unknown') AS best_win_dom,
-    COALESCE(best_win, 'unknown') AS best_win,
-    COALESCE(nationality, 'unknown') AS nationality,
-    COALESCE(birthplace, 'unknown') AS birthplace,
-    COALESCE(birth_date, 'unknown') AS birth_date,
-    COALESCE(association, 'unknown') AS association,
-    COALESCE(weight_class, 'unknown') AS weight_class,
-    COALESCE(age, 'unknown') AS age,
-    COALESCE(weight, 'unknown') AS weight,
-    COALESCE(height, 'unknown') AS height,
-    COALESCE(nickname, 'unknown') AS nickname,                                                                                                                                                                                                                                       
-                                                             
-    fighter_id
-''').limit(1000000).execute()
-
-final_df = pd.DataFrame(response.data)
+final_df = pd.DataFrame(records)
+print(f"Fetched {len(final_df)} rows from fighters_enriched_new.")
 print(f"Number of fighters in final_df right after creation: {final_df['fighter_id'].nunique()}")
 
 # Apply the cleaning function to fighter IDs
