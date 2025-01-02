@@ -29,6 +29,40 @@ def batch_insert(supabase_table, data, batch_size=10000):
                     sys.exit(1)
     print(f"Finished batch insert into '{supabase_table}'.")
 
+
+def batch_delete(table_name, batch_size=10000):
+
+        offset = 0
+        deleted_count = 0
+
+        while True:
+            response = supabase.table(table_name).select('id').neq('name', 'unknown').range(offset, offset + batch_size - 1).execute()
+
+            data = response.data
+            if not data:
+                break
+
+            chunk_ids = [row['id'] for row in data if 'id' in row]
+
+            if chunk_ids:
+                supabase.table(table_name).delete().in_('id', chunk_ids).execute()
+                deleted_count += len(chunk_ids)
+                print(f"Deleted {len(chunk_ids)} records (offset {offset})")
+
+                if len(data) < batch_size:
+                    break
+
+                offset += batch_size
+                time.sleep(0.1)
+            else:
+                break
+
+        print(f"Deleted a total of {deleted_count} records from '{table_name}'.")
+
+
+ 
+ 
+
 # Define cleanup function
 def clean_fighter_id(fid):
     if fid is None or fid == '':
@@ -363,7 +397,8 @@ else:
 
 # Update Supabase tables
 # Delete existing data (if needed)
-supabase.table('fighters_enriched_new').delete().neq('name', 'unknown').execute()
+# supabase.table('fighters_enriched_new').delete().neq('name', 'unknown').execute()
+batch_delete('fighters_enriched_new', batch_size=10000)
 
 # Insert updated data
 data_final_records = data_final 
