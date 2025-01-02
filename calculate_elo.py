@@ -401,7 +401,10 @@ else:
 batch_delete('fighters_enriched_new', batch_size=1000)
 
 # Insert updated data
-data_final_records = data_final 
+final_df = final_df.replace([np.inf, -np.inf], np.nan)
+final_df = final_df.replace({np.nan: None})
+
+data_final_records = final_df.to_dict(orient='records')
 batch_insert('fighters_enriched_new', data_final_records, batch_size=10000)
 
 # Insert new fighters into 'new_fighters' table
