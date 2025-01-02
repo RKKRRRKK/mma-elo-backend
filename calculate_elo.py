@@ -30,7 +30,7 @@ def batch_insert(supabase_table, data, batch_size=10000):
     print(f"Finished batch insert into '{supabase_table}'.")
 
 
-def batch_delete(table_name, batch_size=10000):
+def batch_delete(table_name, batch_size=1000):
 
         offset = 0
         deleted_count = 0
@@ -398,7 +398,7 @@ else:
 # Update Supabase tables
 # Delete existing data (if needed)
 # supabase.table('fighters_enriched_new').delete().neq('name', 'unknown').execute()
-batch_delete('fighters_enriched_new', batch_size=10000)
+batch_delete('fighters_enriched_new', batch_size=1000)
 
 # Insert updated data
 data_final_records = data_final 
