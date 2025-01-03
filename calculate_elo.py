@@ -404,6 +404,10 @@ batch_delete('fighters_enriched_new', batch_size=1000)
 final_df = final_df.replace([np.inf, -np.inf], np.nan)
 final_df = final_df.replace({np.nan: None})
 
+print("\n--- Columns and Data Types in final_df ---")
+for col, dtype in final_df.dtypes.items():
+    print(f"Column: {col}, dtype: {dtype}")
+
 data_final_records = final_df.to_dict(orient='records')
 batch_insert('fighters_enriched_new', data_final_records, batch_size=10000)
 
