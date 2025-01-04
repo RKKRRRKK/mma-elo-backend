@@ -124,7 +124,7 @@ while True:
         COALESCE(height, 'unknown') AS height,
         COALESCE(nickname, 'unknown') AS nickname,
         fighter_id
-    ''').range(offset, offset + limit - 1).execute()
+    ''').range(offset, offset + limit - 1).execute().order('fighter_id')
     
     data = response.data
     
@@ -135,6 +135,16 @@ while True:
     offset += limit
 
 final_df = pd.DataFrame(records)
+
+print("Total rows:", len(final_df))
+print("Unique fighter_ids:", final_df['fighter_id'].nunique())
+
+# Look at the top 10 repeated IDs:
+print("\n-- Top repeated fighter IDs --")
+print(final_df['fighter_id'].value_counts().head(10))
+
+
+
 print(f"Fetched {len(final_df)} rows from fighters_enriched_new.")
 print(f"Number of fighters in final_df right after creation: {final_df['fighter_id'].nunique()}")
 
