@@ -404,13 +404,79 @@ batch_delete('fighters_enriched_new', batch_size=1000)
 final_df = final_df.replace([np.inf, -np.inf], np.nan)
 final_df = final_df.replace({np.nan: None})
 
-print("\n--- Columns and Data Types in final_df ---")
-for col, dtype in final_df.dtypes.items():
-    print(f"Column: {col}, dtype: {dtype}")
+print("\n--- Columns, Data Types, and Sample Value in final_df before Conversion ---")
+if final_df.empty:
+    print("final_df is empty, cannot display sample values.")
+else:
+    for col in final_df.columns:
+        col_type = final_df[col].dtype
+        sample_value = final_df[col].iloc[0]
+        print(f"Column: {col}, dtype: {col_type}, example value: {repr(sample_value)}")
+
+desired_dtypes = {
+
+    'fighter_id': 'int64',
+    'id': 'int64',
+    
+
+    'peak_elo': 'float64',   
+    'peak_elo_dom': 'float64',
+    'current_elo': 'float64',
+    'current_elo_dom': 'float64',
+    'days_peak': 'float32',    
+    'days_peak_dom': 'float64',
+
+
+    'rank_elo': 'Int64',         
+    'rank_elo_dom': 'Int64',
+    
+    'name': 'string',
+    'best_win': 'string',
+    'best_win_dom': 'string',
+    'nickname': 'string',
+    'nationality': 'string',
+    'birthplace': 'string',
+    'age': 'string',
+    'birth_date': 'string',
+    'height': 'string',
+    'weight': 'string',
+    'association': 'string',
+    'weight_class': 'string'
+}
+
+print("\n--- Converting columns to desired dtypes ---")
+
+for col, dtype in desired_dtypes.items():
+    if col not in final_df.columns:
+        print(f"  [Warning] Column '{col}' not in final_df; skipping.")
+        continue
+    
+    if dtype in ['int64', 'Int64', 'float64', 'float32']:
+        final_df[col] = pd.to_numeric(final_df[col], errors='coerce')
+        
+    try:
+        final_df[col] = final_df[col].astype(dtype)
+    except ValueError as e:
+        print(f"  [Error] Converting '{col}' to {dtype} failed: {e}")
+    
+    if dtype == 'int64':
+        if final_df[col].isnull().any():
+            raise ValueError(
+                f"  [Error] Column '{col}' has null values but must be non-nullable (int64)."
+            )
+
+print("\n--- Final Columns, Data Types, and a Sample Value ---")
+if final_df.empty:
+    print("final_df is empty, cannot display sample values.")
+else:
+    for col in final_df.columns:
+        col_type = final_df[col].dtype
+        sample_value = final_df[col].iloc[0]
+        print(f"  Column: {col}, dtype: {col_type}, example: {repr(sample_value)}")
 
 data_final_records = final_df.to_dict(orient='records')
 batch_insert('fighters_enriched_new', data_final_records, batch_size=10000)
 
-# Insert new fighters into 'new_fighters' table
+
 if new_fighters:
     supabase.table('new_fighters').insert(new_fighters).execute()
