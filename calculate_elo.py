@@ -31,33 +31,36 @@ def batch_insert(supabase_table, data, batch_size=10000):
 
 
 def batch_delete(table_name, batch_size=1000):
+    deleted_count = 0
 
-        offset = 0
-        deleted_count = 0
+    while True:
+        # Always start from offset=0
+        response = supabase.table(table_name) \
+                           .select('id') \
+                           .neq('name', 'unknown') \
+                           .range(0, batch_size - 1) \
+                           .execute()
 
-        while True:
-            response = supabase.table(table_name).select('id').neq('name', 'unknown').range(offset, offset + batch_size - 1).execute()
+        data = response.data
+        if not data:
+            break
 
-            data = response.data
-            if not data:
-                break
+        chunk_ids = [row['id'] for row in data if 'id' in row]
 
-            chunk_ids = [row['id'] for row in data if 'id' in row]
+        if chunk_ids:
+            supabase.table(table_name) \
+                    .delete() \
+                    .in_('id', chunk_ids) \
+                    .execute()
 
-            if chunk_ids:
-                supabase.table(table_name).delete().in_('id', chunk_ids).execute()
-                deleted_count += len(chunk_ids)
-                print(f"Deleted {len(chunk_ids)} records (offset {offset})")
+            deleted_count += len(chunk_ids)
+            print(f"Deleted {len(chunk_ids)} records.")
+ 
+            time.sleep(0.1)
+        else:
+            break
 
-                if len(data) < batch_size:
-                    break
-
-                offset += batch_size
-                time.sleep(0.1)
-            else:
-                break
-
-        print(f"Deleted a total of {deleted_count} records from '{table_name}'.")
+    print(f"Deleted a total of {deleted_count} records from '{table_name}'.")
 
 
  
@@ -443,6 +446,7 @@ desired_dtypes = {
     'association': 'string',
     'weight_class': 'string'
 }
+final_df.drop(columns=['id'], errors='ignore', inplace=True)
 
 print("\n--- Converting columns to desired dtypes ---")
 
