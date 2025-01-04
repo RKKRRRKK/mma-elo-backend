@@ -124,7 +124,7 @@ while True:
         COALESCE(height, 'unknown') AS height,
         COALESCE(nickname, 'unknown') AS nickname,
         fighter_id
-    ''').range(offset, offset + limit - 1).execute().order('fighter_id')
+    ''').order('fighter_id').range(offset, offset + limit - 1).execute()
     
     data = response.data
     
