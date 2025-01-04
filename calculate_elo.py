@@ -148,15 +148,15 @@ final_df = final_df[final_df['fighter_id'].notnull()]
 new_fights_df = new_fights_df[new_fights_df['winner_id'].notnull()]
 new_fights_df = new_fights_df[new_fights_df['loser_id'].notnull()]
 
-# Check for duplicates in final_df before any processing
-initial_duplicates = final_df[final_df['fighter_id'].duplicated(keep=False)]
+# Check for duplicates in final_df before any processing  ->>> Temorarily not checking for duplication cause I think it sucks
+# initial_duplicates = final_df[final_df['fighter_id'].duplicated(keep=False)]
 
-if not initial_duplicates.empty:
-    print("Duplicates found in final_df before processing:")
-    print(initial_duplicates)
-    # Drop duplicates, keeping the first occurrence
-    final_df = final_df.drop_duplicates(subset='fighter_id', keep='first')
-    print("Duplicates have been removed from final_df.")
+# if not initial_duplicates.empty:
+#     print("Duplicates found in final_df before processing:")
+#     print(initial_duplicates)
+#     # Drop duplicates, keeping the first occurrence
+#     final_df = final_df.drop_duplicates(subset='fighter_id', keep='first')
+#     print("Duplicates have been removed from final_df.")
 
 # Initialize elo dictionaries
 current_elos_normal = {}
