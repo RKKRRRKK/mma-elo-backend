@@ -75,7 +75,7 @@ def main():
     url = "https://www.ufc.com/rankings"
 
     df_rankings = scrape_ufc_rankings(url)
-    supabase.table("ufc_ranks").delete().neq("Rank", -9999).execute()
+    supabase.table("ufc_ranks").delete().neq("rank", -9999).execute()
     data_to_insert = df_rankings.to_dict(orient="records")
     response = supabase.table("ufc_ranks").insert(data_to_insert).execute()
     print("Insert response:", response)
