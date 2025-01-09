@@ -67,7 +67,9 @@ def scrape_ufc_rankings(url: str) -> pd.DataFrame:
 
     df = pd.DataFrame(data, columns=["rank", "weightclass", "name"])
     # # df.to_csv('test.csv', index = False)
-    # return df
+    df["rank"] = df["rank"].fillna("NaN")
+    print(df)
+    return df
 
 
 
