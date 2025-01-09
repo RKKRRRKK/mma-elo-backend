@@ -47,7 +47,7 @@ jobs:
         run: python calculate_elo.py
 
       - name: Run scrape_ufc_ranks.py
-        if: ${{ env.RUN_ONLY_CALCULATE_ELO = 'true' }}
+        if: ${{ env.RUN_ONLY_CALCULATE_ELO == 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
