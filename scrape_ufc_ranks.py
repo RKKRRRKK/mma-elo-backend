@@ -34,7 +34,7 @@ def scrape_ufc_rankings(url: str) -> pd.DataFrame:
                     
                     # Add champion as rank = 0
                     data.append({
-                        "Rank": 0,
+                        "rank": 0,
                         "Weightclass": weightclass,
                         "Name": champion_name
                     })
@@ -66,8 +66,8 @@ def scrape_ufc_rankings(url: str) -> pd.DataFrame:
     
 
     df = pd.DataFrame(data, columns=["rank", "weightclass", "name"])
-    df.to_csv('test.csv', index = False)
-    return df
+    # # df.to_csv('test.csv', index = False)
+    # return df
 
 
 
