@@ -59,13 +59,13 @@ def scrape_ufc_rankings(url: str) -> pd.DataFrame:
                         athlete_name = name_td.get_text(strip=True)
                     
                     data.append({
-                        "Rank": rank,
-                        "Weightclass": weightclass,
-                        "Name": athlete_name
+                        "rank": rank,
+                        "weightclass": weightclass,
+                        "name": athlete_name
                     })
     
 
-    df = pd.DataFrame(data, columns=["Rank", "Weightclass", "Name"])
+    df = pd.DataFrame(data, columns=["rank", "weightclass", "name"])
     df.to_csv('test.csv', index = False)
     return df
 
