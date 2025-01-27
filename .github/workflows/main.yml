@@ -9,7 +9,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      RUN_ONLY_CALCULATE_ELO: true  # Set to true to run only calculate_elo.py
+      RUN_ONLY_CALCULATE_ELO: false  # Set to true to run only calculate_elo.py
 
     steps:
       - name: Checkout Repo
@@ -40,14 +40,14 @@ jobs:
         run: python get_fights.py
 
       - name: Run calculate_elo.py
-        if: ${{ env.RUN_ONLY_CALCULATE_ELO == 'true' }}
+        if: ${{ env.RUN_ONLY_CALCULATE_ELO != 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python calculate_elo.py
 
       - name: Run scrape_ufc_ranks.py
-        if: ${{ env.RUN_ONLY_CALCULATE_ELO == 'true' }}
+        if: ${{ env.RUN_ONLY_CALCULATE_ELO != 'true' }}
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
